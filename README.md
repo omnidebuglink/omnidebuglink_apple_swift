@@ -72,3 +72,7 @@ Buttons); `swipe` only performs programmatic scrolling on UIScrollView;
 `long_press` approximates activation (UILongPressGestureRecognizer cannot
 be triggered publicly). Each task's return value states honestly what was
 actually done.
+
+## License
+
+Released under the [MIT License](LICENSE).
