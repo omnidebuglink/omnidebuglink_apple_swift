@@ -16,7 +16,10 @@ public enum LinkState: String {
 /// (replaced by a newer connection) the client stops reconnecting for good —
 /// give each device its own token pair.
 public enum OmniDebugLink {
-    public static let libVersion = "0.1.0"
+    public static let libVersion = "0.2.0"
+
+    /// Relay endpoint (baked in; self-hosted relays can change this constant).
+    public static let relayUrlString = "wss://api.omnidebuglink.dev/ws"
 
     public static let tasks = TaskRegistry()
     public static let logBuffer = LogBuffer()
@@ -69,13 +72,15 @@ public enum OmniDebugLink {
     /// Connect to the relay and register the platform's built-in tasks.
     /// Safe to call once per app launch; re-`start()` after `stop()` is allowed.
     /// - Parameters:
-    ///   - url: `wss://api.omnidebuglink.dev/ws?token=<clientToken>`
+    ///   - clientToken: device token minted in the console; the relay endpoint is
+    ///     baked in (`relayUrlString`) so callers never build URLs.
     ///   - appVersion: reported in hello/get_stats (defaults to the bundle short version).
-    public static func start(_ url: String, appVersion: String? = nil) {
+    public static func start(_ clientToken: String, appVersion: String? = nil) {
         lock.lock()
-        guard let parsed = URL(string: url) else {
+        let token = clientToken.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? clientToken
+        guard let parsed = URL(string: relayUrlString + "?token=" + token) else {
             lock.unlock()
-            logBuffer.record("start(): invalid url", level: .error)
+            logBuffer.record("start(): invalid relay url", level: .error)
             return
         }
         _appVersion = appVersion
