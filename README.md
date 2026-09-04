@@ -37,24 +37,46 @@ permanently (a warning is logged); never share a token pair across devices.
 
 ## Built-in tasks
 
-- All platforms: `echo` / `ping` / `get_stats` / `read_logs` / `prefs` /
-  `get_perf` / `get_state`
-- iOS/iPadOS/tvOS/Catalyst: `ui_traverse` / `find_objects` /
-  `view_component` / `wait_for` / `screenshot` (read); `ui_click` /
-  `tap_screen` / `swipe` / `long_press` / `input_text` / `send_key` /
-  `set_component` (write)
-- macOS: same set; input injection goes through `NSEvent` (synthesized
-  in-process and queued via `NSApp.postEvent`, no accessibility permission
-  needed; `CGEvent.postToPid` was measured as ignored by AppKit on
-  macOS 12 Intel)
+Available on all platforms (including watchOS):
 
-The addressing model matches the other clients: `key`
-(accessibilityIdentifier, recommended) / `text` / `view_type` substring +
-`index` disambiguation, with `path` as an exact fallback; find and act
-happen atomically within one task. SwiftUI controls live in the host
-view's accessibilityElements rather than the view subtree — the SDK
-flattens them into addressable nodes; set `.accessibilityIdentifier()` on
-SwiftUI controls to locate them by key and activate them via ui_click.
+| Task | What it does |
+|---|---|
+| `echo` / `ping` / `get_stats` | Connectivity basics and runtime stats |
+| `read_logs` | 1000-entry ring buffer of forwarded logs and uncaught exceptions (no history before start) |
+| `prefs` | NSUserDefaults / UserDefaults: get / set / delete / list with valueType coercion |
+| `get_perf` | fps + frame-time percentiles, memory, device snapshot |
+| `get_state` | App/version state, screen metrics, keyboard/VoiceOver status (reduced set on watchOS) |
+
+UIKit line (iOS/iPadOS/tvOS/Catalyst) and AppKit line (macOS) share this set:
+
+| Task | What it does |
+|---|---|
+| `ui_traverse` | View tree snapshot, flat list by default (3000-node cap); SwiftUI controls are flattened in from the host view's accessibilityElements as addressable pseudo-nodes |
+| `find_objects` | Search by `key` (accessibilityIdentifier, recommended) / `text` / `view_type` substring + `index`; SwiftUI targets locate best by accessibility **label** + text |
+| `view_component` | One node in depth: Mirror-reflected properties with KVC guards (bool vs number disambiguated, crashing getters skipped) |
+| `wait_for` | Poll every 200 ms until a key/text/view_type match appears; timeout returns `found: false`, not an error |
+| `screenshot` | JPEG via `drawHierarchy` (UIKit) / `cacheDisplay` (AppKit, GPU layers not captured), `__odl_file` envelope with quality-then-downsample budget |
+| `ui_click` | Public-API activation: nearest UIControl gets `sendActions(.touchUpInside)` (switches fire `.valueChanged`), otherwise `accessibilityActivate()` — the public programmatic tap that drives SwiftUI Buttons. Segments/sliders infer the intended segment/value from the click x coordinate |
+| `tap_screen` | iOS: no public touch synthesis, so this activates the element at the point via the same channels; macOS: synthesized `NSEvent` click queued through `NSApp.postEvent` — a real event routed like user input |
+| `swipe` | iOS: programmatic `UIScrollView` scrolling (direction matches finger semantics); macOS: real NSEvent drag |
+| `long_press` | Activation-style hold (iOS); real NSEvent press-hold-release (macOS) |
+| `input_text` | Write into the first responder's field (captured via the responder-chain `sendAction(to: nil)` trick, no private API) |
+| `send_key` | iOS: UIKeyInput soft dispatch (enter/tab/space/del/escape); macOS: real NSEvent key codes |
+| `set_component` | Mutate text / segment_index / slider_value / switch state and similar targeted properties |
+
+macOS input injection synthesizes `NSEvent`s in-process and queues them via
+`NSApp.postEvent` (no accessibility permission needed;
+`CGEvent.postToPid` was measured as ignored by AppKit on macOS 12 Intel).
+iOS has **no public touch synthesis** — UITouch cannot be configured — so
+the UIKit line uses the activation channels above; free-form gesture
+injection is not possible there with public API.
+
+The addressing model matches the other clients: `key` / `text` /
+`view_type` substring + `index` disambiguation, with `path` as an exact
+fallback; find and act happen atomically within one task. SwiftUI controls
+live in the host view's accessibilityElements rather than the view subtree
+— set `.accessibilityLabel()` on SwiftUI controls to locate them by text
+and activate them via ui_click.
 
 ## Platform maturity
 
