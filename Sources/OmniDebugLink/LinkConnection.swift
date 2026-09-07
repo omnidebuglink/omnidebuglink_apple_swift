@@ -4,7 +4,8 @@ import Foundation
 /// heartbeat (55s ping), inbound watchdog (180s) and exponential backoff
 /// (1s→30s). Close code 4000 = this token was replaced by a newer connection:
 /// it permanently stops reconnecting (one token pair = one device seat —
-/// reconnecting would ping-pong with the server's kicker forever).
+/// reconnecting would ping-pong with the server's kicker forever) and exits
+/// the process — a live token in a release build must not stay silent.
 final class LinkConnection: NSObject, URLSessionWebSocketDelegate {
     static let heartbeatMs: Int = 55_000
     static let watchdogMs: Int = 180_000
@@ -131,7 +132,9 @@ final class LinkConnection: NSObject, URLSessionWebSocketDelegate {
 
     /// Close code 4000 = this token's seat was taken over by a newer
     /// connection. Stop for good — reconnecting would ping-pong with the
-    /// server's kicker forever (one token pair = one device seat).
+    /// server's kicker forever (one token pair = one device seat) — and then
+    /// fail loud: quit the process so a token that was accidentally shipped
+    /// in a release build cannot keep the debug channel alive silently.
     private func handleReplacement() {
         replaced = true
         connected = false
@@ -140,10 +143,15 @@ final class LinkConnection: NSObject, URLSessionWebSocketDelegate {
         socket = nil
         onStateChange(.stopped)
         let message = "connection closed with code 4000: this token pair was replaced by a "
-            + "newer connection (one token pair = one device seat). Reconnecting disabled; "
-            + "give each device its own token pair."
-        OmniDebugLink.logBuffer.record(message, level: .warning)
-        print("[OmniDebugLink] \(message)")
+            + "newer connection (one token pair = one device seat). Exiting the app now — "
+            + "give each device its own token pair, and never ship OmniDebugLink.start() "
+            + "in release builds."
+        OmniDebugLink.logBuffer.record(message, level: .error)
+        // print() lands in /dev/null on a device without a debugger; NSLog
+        // reaches the unified logging system so a release-build incident can
+        // still be traced afterwards via Console.app / sysdiagnose.
+        NSLog("[OmniDebugLink] %@", message)
+        exit(0)
     }
 
     // MARK: receive loop / heartbeat

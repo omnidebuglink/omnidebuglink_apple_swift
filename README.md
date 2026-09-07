@@ -32,8 +32,21 @@ OmniDebugLink.start("<clientToken>")
 - Custom tasks: `OmniDebugLink.tasks.register("my_task", { req in ["ok": true] }, description: "...")`
 
 **One token pair = one device seat.** When replaced by a newer connection
-with the same token the SDK receives close code 4000 and stops reconnecting
-permanently (a warning is logged); never share a token pair across devices.
+with the same token the SDK receives close code 4000, stops reconnecting
+permanently and **exits the app** — a live token in a release build must
+not stay silent. Never share a token pair across devices.
+
+> ### ⚠️ Do not call `OmniDebugLink.start()` in release builds
+>
+> `start()` opens a debug channel that can inspect and drive your app, and
+> its client token is embedded in the bundle. Keep it out of production:
+> gate the call on the `#if DEBUG` compilation condition, or remove it
+> before archiving for release.
+>
+> Every connection with the same token kicks the previous one offline, and
+> being kicked terminates the app by design (see above). If `start()` ships
+> in a release build, your users' sessions will be terminated and any loss
+> that results is on you, not on OmniDebugLink.
 
 ## Built-in tasks
 

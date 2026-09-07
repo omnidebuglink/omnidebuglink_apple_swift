@@ -16,7 +16,7 @@ public enum LinkState: String {
 /// (replaced by a newer connection) the client stops reconnecting for good —
 /// give each device its own token pair.
 public enum OmniDebugLink {
-    public static let libVersion = "0.2.0"
+    public static let libVersion = "0.2.1"
 
     /// Relay endpoint (baked in; self-hosted relays can change this constant).
     public static let relayUrlString = "wss://api.omnidebuglink.dev/ws"
