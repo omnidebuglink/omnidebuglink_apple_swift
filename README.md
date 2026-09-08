@@ -11,7 +11,7 @@ envelope (JPEG), and the hello capability list is announced per platform.
 SPM (GitHub git dependency, ref by tag):
 
 ```swift
-.package(url: "https://github.com/omnidebuglink/omnidebuglink_apple.git", from: "0.2.0")
+.package(url: "https://github.com/omnidebuglink/omnidebuglink_apple_swift.git", from: "0.2.2")
 ```
 
 ## Usage
