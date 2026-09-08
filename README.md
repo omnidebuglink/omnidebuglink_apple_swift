@@ -36,12 +36,14 @@ with the same token the SDK receives close code 4000, stops reconnecting
 permanently and **exits the app** — a live token in a release build must
 not stay silent. Never share a token pair across devices.
 
-> ### ⚠️ Do not call `OmniDebugLink.start()` in release builds
+> ### ⚠️ Never call `start()` unconditionally — and never embed a token in a release build
 >
-> `start()` opens a debug channel that can inspect and drive your app, and
-> its client token is embedded in the bundle. Keep it out of production:
-> gate the call on the `#if DEBUG` compilation condition, or remove it
-> before archiving for release.
+> `start()` opens a debug channel that can inspect and drive your app.
+> **Debug builds**: start freely — gate the call on the `#if DEBUG`
+> compilation condition.
+> **Release builds**: only behind a runtime condition — a token issued by your
+> own backend to an authorized account, never one baked into the binary
+> ([production pattern](https://github.com/omnidebuglink/omnidebuglink/blob/main/sdk-integration.md#production--conditional-debugging)).
 >
 > Every connection with the same token kicks the previous one offline, and
 > being kicked terminates the app by design (see above). If `start()` ships
