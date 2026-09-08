@@ -16,10 +16,16 @@ public enum LinkState: String {
 /// (replaced by a newer connection) the client stops reconnecting for good —
 /// give each device its own token pair.
 public enum OmniDebugLink {
-    public static let libVersion = "0.2.1"
+    public static let libVersion = "0.2.2"
 
     /// Relay endpoint (baked in; self-hosted relays can change this constant).
     public static let relayUrlString = "wss://api.omnidebuglink.dev/ws"
+
+    /// Random per-process id (UUID) appended to the /ws URL as `&instance=`
+    /// so the relay can tell this process's own reconnects apart from a
+    /// foreign session taking over the token. Generated once per process;
+    /// stable across reconnects and stop()/start() cycles.
+    static let instanceId = UUID().uuidString
 
     public static let tasks = TaskRegistry()
     public static let logBuffer = LogBuffer()
@@ -78,7 +84,7 @@ public enum OmniDebugLink {
     public static func start(_ clientToken: String, appVersion: String? = nil) {
         lock.lock()
         let token = clientToken.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? clientToken
-        guard let parsed = URL(string: relayUrlString + "?token=" + token) else {
+        guard let parsed = URL(string: relayUrlString + "?token=" + token + "&instance=" + instanceId) else {
             lock.unlock()
             logBuffer.record("start(): invalid relay url", level: .error)
             return
